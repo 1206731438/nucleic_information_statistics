@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxw.nucleic_information_statistics.mapper.UserMapper">
+    <insert id="insert">
+        insert into nucleic_user(user_number,user_name,user_type,user_age,user_academy_id,user_class_id,user_sex,user_password,user_img)
+                        values (#{user.userNumber},#{user.userName},#{user.userType},#{user.userAge},#{user.userAcademyId},#{user.userClassId},
+                                #{user.userSex},'123456',#{user.userImg})
+    </insert>
+    <insert id="setNucleicTime">
+        insert into nucleic_date(date_time,date_place) values(#{nucleicDateEntity.dateTime},#{nucleicDateEntity.datePlace})
+    </insert>
+    <insert id="insertNotice">
+        insert into nucleic_notice(notice_content,notice_time,notice_user_id)
+                    values (#{nucleicNoticeEntity.noticeContent},#{dateTime},#{nucleicNoticeEntity.noticeUserId})
+    </insert>
+    <insert id="insertRecording">
+        insert into nucleic_recording(recording_time,user_id,recording_state)
+        values
+        <foreach collection="userEntityList" item="userEntity" separator="," >
+            ( #{dateTime},#{userEntity.userId},'wwc')
+        </foreach>
+    </insert>
+    <update id="update">
+        update nucleic_user set user_number = #{userEntity.userNumber},
+                                user_name = #{userEntity.userName},
+                                user_age = #{userEntity.userAge},
+                                user_academy_id = #{userEntity.userAcademyId},
+                                user_class_id = #{userEntity.userClassId},
+                                user_sex = #{userEntity.userSex},
+                                user_img = #{userEntity.userImg}
+        where user_id = #{userEntity.userId}
+    </update>
+    <delete id="del">
+        delete from nucleic_user where user_id in (<foreach collection="userIds" item="userId" separator=",">
+                                                        #{userId}
+                                                    </foreach> )
+    </delete>
+    <select id="selUserByNumber" resultType="com.zxw.nucleic_information_statistics.vo.SelUserVo">
+        select user_id as userId,
+               user_number as userNumber,
+               user_name as userName,
+               user_type as userType,
+               if(nu.user_type = 'xs','学生',if(nu.user_type = 'ls','老师','管理员')) as userTypeName,
+               user_age as userAge,
+               nu.user_academy_id as userAcademyId,
+               (select academy_name from nucleic_academy na where na.academy_id = nu.user_academy_id) as academyName,
+               nu.user_class_id as userClassId,
+               user_sex as userSex,
+               user_password as userPassword,
+               user_img as userImg
+        from nucleic_user nu
+        where user_number = #{userNumber}
+    </select>
+    <select id="selectPage" resultType="com.zxw.nucleic_information_statistics.vo.NucleicRecordingVo">
+        SELECT
+            nu.user_id AS userId,
+            nu.user_number AS userNumber,
+            nu.user_name AS userName,
+            nu.user_type AS userType,
+            IF(nu.user_type = 'xs','学生',IF( nu.user_type = 'ls', '老师', '管理员' )) AS userTypeName,
+            nu.user_age AS userAge,
+            nu.user_sex as userSex,
+            nu.user_academy_id AS userAcademyId,
+            na.academy_name AS academyName,
+            nu.user_class_id AS userClassId,
+            nr.recording_id AS recordingId,
+            DATE_FORMAT(nr.recording_time,'%Y-%m-%d') AS recordingTime,
+            nr.recording_state AS recordingState,
+            IF(nr.recording_state = 'ywc','已完成',IF( nr.recording_state = 'shz', '审核中', '未完成' )) AS recordingStateName,
+            nr.recording_img AS recordingImg,
+            nr.recording_user_id AS recordingUserId,
+            ( SELECT user_name FROM nucleic_user nu2 WHERE nu2.user_id = nr.recording_user_id ) AS recordingUserName
+        FROM
+            nucleic_recording nr
+                LEFT JOIN nucleic_user nu ON nu.user_id = nr.user_id
+                LEFT JOIN nucleic_academy na ON nu.user_academy_id = na.academy_id
+        where nu.user_type = 'xs'
+            <if test="page.userType != 'ls' and page.classIds != null">
+                and nu.user_class_id in (${page.classIds})
+            </if>
+            <if test="page.recordingTime != null and page.recordingTime != ''">
+                and DATE_FORMAT(nr.recording_time,'%Y-%m-%d') = #{page.recordingTime}
+            </if>
+            <if test="page.recordingTime == null || page.recordingTime == ''">
+                and DATE_FORMAT(nr.recording_time,'%Y-%m-%d') = (select DATE_FORMAT((select max(date_time) from nucleic_date),'%Y-%m-%d'))
+            </if>
+            <if test="page.search != null and page.search != ''">
+                and (nu.user_number like concat('%',#{page.search},'%')
+                    or nu.user_name like concat('%',#{page.search},'%')
+                    or nu.user_name like concat('%',#{page.search},'%')
+                    or nu.user_age like concat('%',#{page.search},'%')
+                    or na.academy_name like concat('%',#{page.search},'%')
+                    or nc.class_name like concat('%',#{page.search},'%')
+                    or DATE_FORMAT(nr.recording_time,'%Y-%m-%d %H:%i:%s') like concat('%',#{page.search},'%')
+                    or IF(nr.recording_state = 'ywc','已完成',IF( nu.user_type = 'shz', '审核中', '未完成' )) like concat('%',#{page.search},'%')
+                    or ( SELECT user_name FROM nucleic_user nu2 WHERE nu2.user_id = nr.recording_user_id ) like concat('%',#{page.search},'%')
+                    )
+            </if>
+        order by nu.user_id desc
+    </select>
+    <select id="selectClassNameById" resultType="java.lang.String">
+        select class_name from nucleic_class where class_id in (${userClassId})
+    </select>
+    <select id="selNucleicDate" resultType="com.zxw.nucleic_information_statistics.entity.NucleicDateEntity">
+        select date_id as dateId,
+               DATE_FORMAT(date_time,'%Y-%m-%d') as dateTimeStr
+        from nucleic_date
+        order by date_time DESC
+    </select>
+
+    <resultMap id="aMap" type="com.zxw.nucleic_information_statistics.vo.NucleicAcademyOrClassVo">
+        <result property="value" column="academy_id"/>
+        <result property="label" column="academy_name"/>
+        <collection property="children" ofType="com.zxw.nucleic_information_statistics.vo.NucleicAcademyOrClassVo">
+            <result column="class_id" property="value"/>
+            <result column="class_name" property="label"/>
+        </collection>
+    </resultMap>
+    <select id="selClass" resultMap="aMap" resultType="com.zxw.nucleic_information_statistics.vo.NucleicAcademyOrClassVo">
+        select na.academy_id,
+               na.academy_name,
+               nc.class_id,
+               nc.class_name
+        from nucleic_academy na left join nucleic_class nc on na.academy_id = nc.academy_id
+        where 1 = 1
+            <if test="user.userType == 'ls'">
+                and nc.class_id in (${user.userClassId})
+            </if>
+    </select>
+    <select id="selUserAll" resultType="com.zxw.nucleic_information_statistics.entity.UserEntity">
+        select user_id as userId from nucleic_user where user_type = 'xs'
+    </select>
+</mapper>

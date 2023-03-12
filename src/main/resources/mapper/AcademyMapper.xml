@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxw.nucleic_information_statistics.mapper.AcademyMapper">
+    <insert id="insert">
+        insert into nucleic_academy(academy_name,academy_create_time)
+                    values (#{academyEntity.academyName},NOW())
+    </insert>
+    <update id="update">
+        update nucleic_academy set academy_name = #{academyEntity.academyName} where academy_id = #{academyEntity.academyId}
+    </update>
+    <delete id="del">
+        delete from nucleic_academy where academy_id in (<foreach collection="academyIds" item="academyId" separator=",">#{academyId}</foreach> )
+    </delete>
+    <select id="selectPage" resultType="com.zxw.nucleic_information_statistics.vo.NucleicAcademyVo">
+        select academy_id as academyId,
+               academy_name as academyName,
+               academy_create_time as academyCreateTime,
+               (select count(*) from nucleic_user nu where na.academy_id = nu.user_academy_id and user_type = 'xs') as studentNumber
+        from nucleic_academy na
+        order by academy_create_time desc
+    </select>
+    <select id="selectByName" resultType="com.zxw.nucleic_information_statistics.entity.NucleicAcademyEntity">
+        select academy_id as academyId,
+               academy_name as academyName
+        from nucleic_academy
+        where academy_name = #{academyName}
+    </select>
+</mapper>

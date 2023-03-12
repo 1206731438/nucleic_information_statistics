@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxw.nucleic_information_statistics.mapper.NucleicClassMapper">
+    <insert id="insert">
+        insert into nucleic_class(class_name,academy_id,academy_create_time)
+        values (#{classEntity.className},#{classEntity.academyId},NOW())
+    </insert>
+    <update id="update">
+        update nucleic_class set class_name = #{classEntity.className},
+                                 academy_id = #{classEntity.academyId}
+        where class_id = #{classEntity.classId}
+    </update>
+    <delete id="del">
+        delete from nucleic_class where class_id in (<foreach collection="classIds" item="classId" separator=",">#{classId}</foreach> )
+    </delete>
+    <select id="selectPage" resultType="com.zxw.nucleic_information_statistics.vo.NucleicClassVo">
+        select class_id as classId,
+               class_name as className,
+               class_create_time as classCreateTime,
+               nc.academy_id as academyId,
+               (select academy_name from nucleic_academy na where na.academy_id = nc.academy_id) as academyName,
+               (select count(*) from nucleic_user nu where nc.class_id = nu.user_class_id and user_type = 'xs') as studentNumber
+        from nucleic_class nc
+        order by class_create_time desc
+    </select>
+    <select id="selectByName" resultType="com.zxw.nucleic_information_statistics.entity.NucleicClassEntity">
+        select class_id as classId,
+               class_name as className
+        from nucleic_class
+        where class_name = #{className}
+    </select>
+    <select id="selAcademyList" resultType="com.zxw.nucleic_information_statistics.entity.NucleicAcademyEntity">
+        select academy_id as academyId,
+               academy_name as academyName
+        from nucleic_academy
+    </select>
+</mapper>

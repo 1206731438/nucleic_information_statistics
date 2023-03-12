@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxw.nucleic_information_statistics.mapper.NucleicRecordingMapper">
+    <update id="updateState">
+        update nucleic_recording set recording_state = #{recordingEntity.recordingState} where recording_id = #{recordingEntity.recordingId}
+    </update>
+    <select id="selectPage" resultType="com.zxw.nucleic_information_statistics.vo.SelNucleicRecordingVo">
+        select nr.recording_id as recordingId,
+               nr.recording_time as recordingTime,
+               nu.user_id as userId,
+               nr.recording_state as recordingState,
+               if(nr.recording_state == 'shz','审核中',if(nr.recording_state == 'ywc','已完成','未完成')) as recordingStateName,
+               nr.recording_img as recordingImg,
+               nr.recording_user_id as recordingUserId,
+               (select user_name from nucleic_user nu2 where nr.recording_user_id = nu2.user_id) as recordingUserName,
+               nu.user_name as userName,
+               nu.user_number as userNumber,
+               nu.user_academy_id as userAcademyId,
+               (select academy_name from nucleic_academy na where na.academy_id = nu.user_academy_id) as academyName,
+               nu.user_class_id as userClassId,
+               (select class_name from nucleic_class nc where nc.class_id = nu.user_class_id) as className
+        from nucleic_recording nr
+            left join nucleic_user nu on nr.user_id = nu.user_id
+        where nr.recording_state = 'shz'
+            <if test="page.search != null and page.search != ''">
+                and (DATE_FORMAT(nr.recording_time,'%Y-%m-%d %H:%i:%s') like concat('%',#{page.search},'%')
+                    or if(nr.recording_state == 'shz','审核中',if(nr.recording_state == 'ywc','已完成','未完成')) like concat('%',#{page.search},'%')
+                    or (select user_name from nucleic_user nu2 where nr.recording_user_id = nu2.user_id) like concat('%',#{page.search},'%')
+                    or nu.user_name like concat('%',#{page.search},'%')
+                    or nu.user_number like concat('%',#{page.search},'%')
+                    or (select academy_name from nucleic_academy na where na.academy_id = nu.user_academy_id) ike concat('%',#{page.search},'%')
+                    or (select class_name from nucleic_class nc where nc.class_id = nu.user_class_id) like concat('%',#{page.search},'%'))
+            </if>
+        order by nr.recording_id desc
+    </select>
+</mapper>
